@@ -25,6 +25,8 @@ public partial class ChatBox : UIWidget
 
     public bool Main { get; set; }
 
+    private ChatAutocompleteHandler AutocompleteHandler { get; set; }
+
     public ChatSelectChannel SelectedChannel => ChatInput.ChannelSelector.SelectedChannel;
 
     public ChatBox()
@@ -42,10 +44,18 @@ public partial class ChatBox : UIWidget
         _controller = UserInterfaceManager.GetUIController<ChatUIController>();
         _controller.MessageAdded += OnMessageAdded;
         _controller.RegisterChat(this);
+
+        AutocompleteHandler = new ChatAutocompleteHandler();
     }
 
     private void OnTextEntered(LineEditEventArgs args)
     {
+        var strings = AutocompleteHandler.ParseInput(args.Text);
+        foreach (var item in strings)
+        {
+            AutocompleteHandler.AddWord(item);
+        }
+        AutocompleteHandler.SaveDictionary();
         _controller.SendMessage(this, SelectedChannel);
     }
 
@@ -171,6 +181,14 @@ public partial class ChatBox : UIWidget
 
     private void OnTextChanged(LineEditEventArgs args)
     {
+        string toAppend = AutocompleteHandler.GetWordPartToAppend(args.Text);
+        int posToAppend = args.Control.Text.Length;
+        if (toAppend != "")
+        {
+            args.Control.Text = args.Control.Text.Insert(args.Control.Text.Length, toAppend);
+            args.Control.CursorPosition = posToAppend;
+            args.Control.SelectionStart = args.Control.Text.Length;
+        }
         // Update channel select button to correct channel if we have a prefix.
         _controller.UpdateSelectedChannel(this);
 
