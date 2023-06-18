@@ -1,3 +1,7 @@
+//This class contains methods for autocompletion chat messages. Any questions can be directed to mailto:modern-nm@yandex.by or https://github.com/modern-nm
+//discord = modern.df
+
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -67,9 +71,9 @@ namespace Content.Client.UserInterface.Systems.Chat
         //Try to add word to lexinon [ List<Word> Dict ]
         public void AddWord(string item)
         {
-            Word word = new Word(item);
-            if (!Lexicon.Contains(word))
+            if (!Lexicon.Exists(x => x.Text == item))
             {
+                Word word = new Word(item);
                 Lexicon.Add(word);
             }
         }
@@ -94,10 +98,8 @@ namespace Content.Client.UserInterface.Systems.Chat
             {
                 foreach (var item in Lexicon)
                 {
-                    if (item.Text.Contains(match.Value.ToLower()))
+                    if (item.Text.StartsWith(match.Value.ToLower()))
                     {
-                        //int lastIndex = item.Text.LastIndexOf(match.Value);
-                        //string toAppend = item.Text.Substring(0,lastIndex);
                         int length = item.Text.Length - match.Value.Length;
                         string toAppend = item.Text.Substring(match.Value.Length, length);
                         if (PrevInput.Length >= input.Length)
