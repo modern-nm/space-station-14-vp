@@ -21,6 +21,8 @@ namespace Content.Client.UserInterface.Systems.Chat
         public JsonSerializerOptions Options { get; set; }
         private string JsonString { get; set; }
 
+        public string PrevInput { get; set; }
+
         readonly string _dictpath = Path.Combine(Environment.GetFolderPath(
     Environment.SpecialFolder.ApplicationData), @"Space Station 14/data/autocomplete_dict.json");
 
@@ -29,6 +31,7 @@ namespace Content.Client.UserInterface.Systems.Chat
             Lexicon = GetDictList();
             JsonString = "";
             Options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic), WriteIndented = true};
+            PrevInput = "";
             SortLexicon();
             SaveDictionary();
         }
@@ -49,7 +52,7 @@ namespace Content.Client.UserInterface.Systems.Chat
                 else
                 {
                     JsonString = File.ReadAllText(_dictpath);
-                    var data = (JsonSerializer.Deserialize<List<Word>>(JsonString,Options));
+                    var data = (JsonSerializer.Deserialize<List<Word>>(JsonString, Options));
                     return data != null ? data : new List<Word>();
                 }
             }
@@ -97,11 +100,19 @@ namespace Content.Client.UserInterface.Systems.Chat
                         //string toAppend = item.Text.Substring(0,lastIndex);
                         int length = item.Text.Length - match.Value.Length;
                         string toAppend = item.Text.Substring(match.Value.Length, length);
+                        if (PrevInput.Length >= input.Length)
+                        {
+                            PrevInput = input;
+                            return "";
+                        }
+                        PrevInput = input;
                         return toAppend;
                     }
                 }
+                PrevInput = input;
                 return "";
             }
+            PrevInput = input;
             return "";
         }
         public void SortLexicon()
