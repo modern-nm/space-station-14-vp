@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Text.Unicode;
 using System.Threading.Tasks;
 using TerraFX.Interop.Windows;
 
@@ -15,17 +17,20 @@ namespace Content.Client.UserInterface.Systems.Chat
 {
     internal class ChatAutocompleteHandler
     {
-        public List<Word> Dict { get; set; }
-
+        public List<Word> Lexicon { get; set; }
+        public JsonSerializerOptions Options { get; set; }
         private string JsonString { get; set; }
 
         readonly string _dictpath = Path.Combine(Environment.GetFolderPath(
-    Environment.SpecialFolder.ApplicationData), "Space Station 14/data/autocomplete_dict.json");
+    Environment.SpecialFolder.ApplicationData), @"Space Station 14/data/autocomplete_dict.json");
 
         public ChatAutocompleteHandler()
         {
-            Dict = GetDictList();
+            Lexicon = GetDictList();
             JsonString = "";
+            Options = new JsonSerializerOptions { Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic), WriteIndented = true};
+            SortLexicon();
+            SaveDictionary();
         }
 
         public List<Word> GetDictList()
@@ -34,7 +39,7 @@ namespace Content.Client.UserInterface.Systems.Chat
             {
                 if (!File.Exists(_dictpath))
                 {
-                    File.WriteAllText(_dictpath, JsonSerializer.Serialize(Dict));
+                    File.WriteAllText(_dictpath, JsonSerializer.Serialize(Lexicon, Options));
                     //File.WriteAllText(_dictpath, JsonSerializer.Serialize<List<Word>>(new List<Word>()));
                     //StreamWriter streamWriter = new StreamWriter(_dictpath, false);
                     //streamWriter.Write(JsonSerializer.Serialize(Dict));
@@ -44,7 +49,7 @@ namespace Content.Client.UserInterface.Systems.Chat
                 else
                 {
                     JsonString = File.ReadAllText(_dictpath);
-                    var data = (JsonSerializer.Deserialize<List<Word>>(JsonString));
+                    var data = (JsonSerializer.Deserialize<List<Word>>(JsonString,Options));
                     return data != null ? data : new List<Word>();
                 }
             }
@@ -52,16 +57,17 @@ namespace Content.Client.UserInterface.Systems.Chat
         }
         public void SaveDictionary()
         {
-            File.WriteAllText(_dictpath, JsonSerializer.Serialize(Dict));
+            var str = JsonSerializer.Serialize(Lexicon,Options);
+            File.WriteAllText(_dictpath, str);
         }
 
         //Try to add word to lexinon [ List<Word> Dict ]
         public void AddWord(string item)
         {
             Word word = new Word(item);
-            if (!Dict.Contains(word))
+            if (!Lexicon.Contains(word))
             {
-                Dict.Add(word);
+                Lexicon.Add(word);
             }
         }
         //Parse chat input. прикрутить на Chatbox.OnTextEntered
@@ -72,7 +78,7 @@ namespace Content.Client.UserInterface.Systems.Chat
             List<string> strings = new List<string>();
             foreach (Match word in words)
             {
-                strings.Add(word.Value);
+                strings.Add(word.Value.ToLower());
             }
             return strings;
         }
@@ -83,9 +89,9 @@ namespace Content.Client.UserInterface.Systems.Chat
             Match match = regex.Match(input);
             if (match.Value != "")
             {
-                foreach (var item in Dict)
+                foreach (var item in Lexicon)
                 {
-                    if (item.Text.Contains(match.Value))
+                    if (item.Text.Contains(match.Value.ToLower()))
                     {
                         //int lastIndex = item.Text.LastIndexOf(match.Value);
                         //string toAppend = item.Text.Substring(0,lastIndex);
@@ -97,6 +103,16 @@ namespace Content.Client.UserInterface.Systems.Chat
                 return "";
             }
             return "";
+        }
+        public void SortLexicon()
+        {
+            Lexicon.Sort(delegate (Word x, Word y)
+            {
+                if (x.Text == null && y.Text == null) return 0;
+                else if (x.Text == null) return -1;
+                else if (y.Text == null) return 1;
+                else return x.Text.CompareTo(y.Text);
+            });
         }
 
     }
